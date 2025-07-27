@@ -1,9 +1,9 @@
-# create-proxmox-nvidia-containers
+# How to create Proxmox LXC containers with nvidia GPU permissions and docker.
 Scripts for creating Proxmox VE LXC containers with nvidia GPU permissions based on https://jocke.no/2025/04/20/plex-gpu-transcoding-in-docker-on-lxc-on-proxmox-v2/
 
 These were _absolutely_ vibe-coded (using Gemini) as my sed, awk, and grep skills are pretty rusty, but these scripts were tested on Proxmox VE 8.4.5 with Debian 12.11.
 
-# Proxmox setup prior to containers
+## Proxmox setup prior to containers
 
 We need to update the `/etc/apt/sources.list` file to include non-free and non-free-firmware sources so that we can install the nvidia drivers.
 
@@ -18,7 +18,7 @@ apt install nvidia-driver-cuda nvidia-kernel-dkms
 reboot now
 ```
 
-# Usage
+## Creating the container
 1. Create a new LXC container with the following options:
     - Container type: Container
     - OS: Debian
@@ -88,7 +88,7 @@ pct exec <container_id> -- sh -c "<command>"
 
 This script assumes all running containers are using the GPU. If you have containers that are not using the GPU, I'd recommend stopping them before running this script. This script will upgrade the NVIDIA driver on the host, the containers, restart the containers, and then restart the host.
 
-    ```bash
-    # please run this on the docker host
-    curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/upgrade_host_and_containers.sh | bash
-    ```
+```bash
+# please run this on the docker host
+curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/upgrade_host_and_containers.sh | bash
+```
