@@ -30,24 +30,31 @@ reboot now
     curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/generate_lxc_conf_additions.sh | bash
     ```
 
-    and then copy the output to the container's configuration file, usually located at /etc/lxc/<container_name>.conf.
+    and then copy the output to the container's configuration file, usually located at /etc/lxc/<container_id>.conf.
 
-3. Start the container and then run the following commands in the Proxmox _host_ terminal and include the container ID as an argument.
+3. Start the container and then run the following command to install the NVIDIA driver on the container.
 
     ```bash
-    curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_nvidia_driver_on_container.sh | bash <container_id> 
+    # either run this inside the container
+    curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_nvidia_driver_on_container.sh | bash
+    # or run this on the host
+    pct exec <container_id> -- sh -c "curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_nvidia_driver_on_container.sh | bash
     ```
 
 4. (Optional) Configure unattended-upgrades for the container while disabling unattended-upgrades for nvidia driver updates. This is so that you can keep the container up to date with the latest security updates, but nvidia driver updates require a different approach to avoid conflicts with the host.
 
     ```bash
-    # run on the Proxmox host with the container ID as an argument
-    curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_unattended_upgrades_on_container.sh | bash <container_id> 
+    # run in the container
+    curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_unattended_upgrades_on_container.sh | bash
+    # or run on the host
+    pct exec <container_id> -- sh -c "curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_unattended_upgrades_on_container.sh | bash"
     ```
 
 5. (Optional) Install docker and the NVIDIA Container Toolkit on the container. This is required for running NVIDIA containers on the container.
 
     ```bash
+    # run in container
+    curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_docker_and_nvidia_runtime.sh | bash
     # run on Proxmox host, or copy the curl command and run it on the container
     pct exec <container_id> -- sh -c "curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_docker_and_nvidia_runtime.sh | bash"
     ```
@@ -58,6 +65,7 @@ reboot now
     # run this in the container
     rm /etc/ssh/ssh_host_*
     truncate -s 0 /etc/machine-id
+    shutdown now
     ```
 
     In the UI, right click the (now stopped) container, and select "Convert to template". This requires that there are no snapshots of the container, and you won't be able to run the container after converting to a template.
