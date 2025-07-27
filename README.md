@@ -35,21 +35,21 @@ reboot now
 
     and then copy the output to the container's configuration file, usually located at /etc/lxc/<container_id>.conf.
 
-NOTE: All following commands can be run from the container, or pushed to the container by running on the host with the command copied inside like so:
+    NOTE: All following commands can be run from the container, or pushed to the container by running on the host with the command copied inside like so:
 
-```bash
-pct exec <container_id> -- sh -c "<command>"
-```
+    ```bash
+    pct exec <container_id> -- sh -c "<command>"
+    ```
 
 3. Start the container and then run the following command inside to install the NVIDIA driver on the container.
 
     First install sudo and curl if they are not already installed.
 
     ```bash
-    apt-get install -y sudo curl
+    apt update && apt upgrade -y && apt-get install -y sudo curl
     ```
 
-    Then run the following:
+    Then install the NVIDIA driver:
 
     ```bash
     curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_nvidia_driver_on_container.sh | bash
