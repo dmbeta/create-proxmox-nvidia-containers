@@ -41,7 +41,7 @@ NOTE: All following commands can be run from the container, or pushed to the con
 pct exec <container_id> -- sh -c "<command>"
 ```
 
-1. Start the container and then run the following command inside to install the NVIDIA driver on the container.
+3. Start the container and then run the following command inside to install the NVIDIA driver on the container.
 
     First install sudo and curl if they are not already installed.
 
@@ -55,19 +55,19 @@ pct exec <container_id> -- sh -c "<command>"
     curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_nvidia_driver_on_container.sh | bash
     ```
 
-2. (Optional) Configure unattended-upgrades for the container while disabling unattended-upgrades for nvidia driver updates. This is so that you can keep the container up to date with the latest security updates, but nvidia driver updates require a different approach to avoid conflicts with the host.
+4. (Optional) Configure unattended-upgrades for the container while disabling unattended-upgrades for nvidia driver updates. This is so that you can keep the container up to date with the latest security updates, but nvidia driver updates require a different approach to avoid conflicts with the host.
 
     ```bash
     curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_unattended_upgrades_on_container.sh | bash
     ```
 
-3. (Optional) Install docker and the NVIDIA Container Toolkit on the container. This is required for running NVIDIA containers on the container.
+4. (Optional) Install docker and the NVIDIA Container Toolkit on the container. This is required for running NVIDIA containers on the container.
 
     ```bash
     curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_docker_and_nvidia_runtime.sh | bash
     ```
 
-4. (Optional, but recommended): Once you verify the container works using `nvidia-smi` and a sample container, turn it into a template. This will allow you to easily create new containers from this template.
+6. (Optional, but recommended): Once you verify the container works using `nvidia-smi` and a sample container, turn it into a template. This will allow you to easily create new containers from this template.
 
     ```bash
     rm /etc/ssh/ssh_host_*
