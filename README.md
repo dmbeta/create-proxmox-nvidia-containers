@@ -24,45 +24,52 @@ reboot now
     - OS: Debian
     - Version: 12 (Bookworm)
 
+    But do not start it just yet.
+
 2. Add the necessary cgroup2 devices and lxc mount points to the container's configuration file. You can generate them by utilizing the generate_lxc_conf_additions.sh script by running:
 
     ```bash
+    # run on the host
     curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/generate_lxc_conf_additions.sh | bash
     ```
 
     and then copy the output to the container's configuration file, usually located at /etc/lxc/<container_id>.conf.
 
-3. Start the container and then run the following command to install the NVIDIA driver on the container.
+NOTE: All following commands can be run from the container, or pushed to the container by running on the host with the command copied inside like so:
+
+```bash
+pct exec <container_id> -- sh -c "<command>"
+```
+
+1. Start the container and then run the following command inside to install the NVIDIA driver on the container.
+
+    First install sudo and curl if they are not already installed.
 
     ```bash
-    # either run this inside the container
+    apt-get install -y sudo curl
+    ```
+
+    Then run the following:
+
+    ```bash
     curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_nvidia_driver_on_container.sh | bash
-    # or run this on the host
-    pct exec <container_id> -- sh -c "curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_nvidia_driver_on_container.sh | bash
     ```
 
-4. (Optional) Configure unattended-upgrades for the container while disabling unattended-upgrades for nvidia driver updates. This is so that you can keep the container up to date with the latest security updates, but nvidia driver updates require a different approach to avoid conflicts with the host.
+2. (Optional) Configure unattended-upgrades for the container while disabling unattended-upgrades for nvidia driver updates. This is so that you can keep the container up to date with the latest security updates, but nvidia driver updates require a different approach to avoid conflicts with the host.
 
     ```bash
-    # run in the container
     curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_unattended_upgrades_on_container.sh | bash
-    # or run on the host
-    pct exec <container_id> -- sh -c "curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_unattended_upgrades_on_container.sh | bash"
     ```
 
-5. (Optional) Install docker and the NVIDIA Container Toolkit on the container. This is required for running NVIDIA containers on the container.
+3. (Optional) Install docker and the NVIDIA Container Toolkit on the container. This is required for running NVIDIA containers on the container.
 
     ```bash
-    # run in container
     curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_docker_and_nvidia_runtime.sh | bash
-    # run on Proxmox host, or copy the curl command and run it on the container
-    pct exec <container_id> -- sh -c "curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_docker_and_nvidia_runtime.sh | bash"
     ```
 
-6. (Optional, but recommended): Once you verify the container works using `nvidia-smi` and a sample container, turn it into a template. This will allow you to easily create new containers from this template.
+4. (Optional, but recommended): Once you verify the container works using `nvidia-smi` and a sample container, turn it into a template. This will allow you to easily create new containers from this template.
 
     ```bash
-    # run this in the container
     rm /etc/ssh/ssh_host_*
     truncate -s 0 /etc/machine-id
     shutdown now
