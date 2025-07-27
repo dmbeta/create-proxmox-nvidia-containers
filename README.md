@@ -8,7 +8,7 @@ These were _absolutely_ vibe-coded (using Gemini) as my sed, awk, and grep skill
 We need to update the `/etc/apt/sources.list` file to include non-free and non-free-firmware sources so that we can install the nvidia drivers.
 
 ```bash
-curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/update_debian_sources.sh | bash
+curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/update_debian_sources.sh | bash
 apt update
 apt install proxmox-headers-$(uname -r)
 wget https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/cuda-keyring_1.1-1_all.deb
@@ -30,7 +30,7 @@ reboot now
 
     ```bash
     # run on the host
-    curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/generate_lxc_conf_additions.sh | bash
+    curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/generate_lxc_conf_additions.sh | bash
     ```
 
     and then copy the output to the container's configuration file, usually located at /etc/lxc/<container_id>.conf.
@@ -52,19 +52,19 @@ reboot now
     Then install the NVIDIA driver:
 
     ```bash
-    curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_nvidia_driver_on_container.sh | bash
+    curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_nvidia_driver_on_container.sh | bash
     ```
 
 4. (Optional) Configure unattended-upgrades for the container while disabling unattended-upgrades for nvidia driver updates. This is so that you can keep the container up to date with the latest security updates, but nvidia driver updates require a different approach to avoid conflicts with the host.
 
     ```bash
-    curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_unattended_upgrades_on_container.sh | bash
+    curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_unattended_upgrades_on_container.sh | bash
     ```
 
 4. (Optional) Install docker and the NVIDIA Container Toolkit on the container. This is required for running NVIDIA containers on the container.
 
     ```bash
-    curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_docker_and_nvidia_runtime.sh | bash
+    curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_docker_and_nvidia_runtime.sh | bash
     ```
 
 6. (Optional, but recommended): Once you verify the container works using `nvidia-smi` and a sample container, turn it into a template. This will allow you to easily create new containers from this template.
@@ -89,6 +89,6 @@ reboot now
 This script assumes all running containers are using the GPU. If you have containers that are not using the GPU, I'd recommend stopping them before running this script. This script will upgrade the NVIDIA driver on the host, the containers, restart the containers, and then restart the host.
 
 ```bash
-# please run this on the docker host
-curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/upgrade_host_and_containers.sh | bash
+# please run this on the Proxmox host
+curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/upgrade_host_and_containers.sh | bash
 ```

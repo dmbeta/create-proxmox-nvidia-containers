@@ -1,6 +1,6 @@
 apt install sudo -y
 # update sources with non-free and non-free-firmware
-curl -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/update_debian_sources.sh | bash
+curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/update_debian_sources.sh | bash
 apt update && apt upgrade -y
 wget https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/cuda-keyring_1.1-1_all.deb && dpkg -i cuda-keyring_1.1-1_all.deb && apt update && apt install nvidia-driver-cuda -y
 systemctl stop nvidia-persistenced.service || true
