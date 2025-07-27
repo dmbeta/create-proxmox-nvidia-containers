@@ -126,7 +126,7 @@ curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-co
         ```sh
         curl -fsSL https://tailscale.com/install.sh | sh
         sudo tailscale set --auto-update
-        sudo tailscale up --ssh --accept-routes --accept-dns
+        sudo tailscale up --ssh --accept-routes
         ```
         This allows you to SSH into your container without having to port forward or manage ssh keys.
     - One important note though, is that your LXC container must either be privileged _or_ have the following line in its `/etc/pve/lxc/<container_id>.conf` file:
@@ -134,3 +134,5 @@ curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-co
         lxc.mount.entry: /dev/net dev/net none bind,create=dir
         lxc.cgroup2.devices.allow: c 10:200 rwm # this must correspond to the ids you see when you run `ls -l /dev/net`
         ```
+    - Another important note, is you should _NOT_ run `tailscale up` in a container that you intend to turn into a template. This is because subsequent copies of the container will not generate a new tailscale [node key](https://tailscale.com/kb/1010/node-keys). I'd recommend running the install and autoupdate steps in the container, follow the steps above to convert the container to a template, and then run `tailscale up` on a fresh copy of the template.
+    - [Official Tailscale LXC Documentation](https://tailscale.com/kb/1130/lxc-unprivileged)
