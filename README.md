@@ -60,7 +60,11 @@ reboot now
 4. (Optional) Install docker and the NVIDIA Container Toolkit on the container. This is required for running NVIDIA containers on the container.
 
     ```bash
-    curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_docker_and_nvidia_runtime.sh | bash
+    curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_docker.sh | bash
+    ```
+
+    ```
+    curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_nvidia_container_toolkit.sh | bash
     ```
 
 5. (Optional) Set up a cron job to delete unused images, containers, and volumes. This helps keep the container size down.
