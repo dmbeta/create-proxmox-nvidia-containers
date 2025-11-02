@@ -1,19 +1,19 @@
 # handle proxmox header and nvidia driver upgrades for host and all LXC nodes
 # upgrade packages
 apt update
-apt upgrade
+apt upgrade -y
 
 # download new headers
-apt install proxmox-headers-$(uname -r)
+apt install proxmox-headers-$(uname -r) -y
 
 # reinstall the drivers with new headers installed
-apt install --reinstall nvidia-driver-cuda nvidia-kernel-dkms
+apt install --reinstall nvidia-driver-cuda nvidia-kernel-dkms -y
 
 # for each proxmox node, run the following
 read -r -d '' upgrade_driver << EOF
 # upgrade packages
 apt update
-apt upgrade
+apt upgrade -y
 
 # update docker compose
 curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
