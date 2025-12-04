@@ -1,7 +1,7 @@
 # handle proxmox header and nvidia driver upgrades for host and all LXC nodes
 # upgrade packages
-apt update
-apt upgrade -y
+pveupdate
+pveupgrade -y
 
 # download new headers
 apt install proxmox-headers-$(uname -r) -y
