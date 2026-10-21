@@ -491,6 +491,8 @@ EOF
 
 install_cuda13_keyring() {
     local keyring_deb
+    local cuda_uri="https://developer.download.nvidia.com/compute/cuda/repos/debian13/x86_64"
+    local cuda_list="/etc/apt/sources.list.d/cuda-debian13-x86_64.list"
 
     if ! command -v curl >/dev/null 2>&1; then
         apt update
@@ -499,7 +501,7 @@ install_cuda13_keyring() {
 
     keyring_deb="$(mktemp "${TMPDIR:-/tmp}/cuda-keyring.XXXXXX.deb")"
     curl -fsSL \
-        "https://developer.download.nvidia.com/compute/cuda/repos/debian13/x86_64/cuda-keyring_1.1-1_all.deb" \
+        "${cuda_uri}/cuda-keyring_1.1-1_all.deb" \
         -o "$keyring_deb"
 
     rm -f /etc/apt/sources.list.d/cuda-debian*-x86_64.list
@@ -509,6 +511,14 @@ install_cuda13_keyring() {
 
     DEBIAN_FRONTEND=noninteractive dpkg -i "$keyring_deb"
     rm -f "$keyring_deb"
+
+    # The repository file is a dpkg conffile.  If it was removed previously,
+    # dpkg will keep it removed when the same keyring version is reinstalled.
+    # Write it explicitly so the CUDA repository is always available.
+    printf 'deb [signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg] %s/ /\n' \
+        "$cuda_uri" > "$cuda_list"
+    chmod 644 "$cuda_list"
+
     echo "Configured CUDA repository for Debian 13."
 }
 
@@ -1060,6 +1070,16 @@ check() {
     grep -RhsE '^[[:space:]]*(deb(-src)?[[:space:]]|Types:|URIs:|Suites:|Components:)' \
         /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources 2>/dev/null \
         | sed 's/^/  /' || true
+    echo
+
+    if grep -q 'developer\.download\.nvidia\.com/compute/cuda/repos' \
+        /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources 2>/dev/null; then
+        echo "NVIDIA CUDA repository: configured"
+    elif dpkg -s nvidia-kernel-dkms >/dev/null 2>&1 || dpkg -s nvidia-driver-cuda >/dev/null 2>&1; then
+        echo "NVIDIA CUDA repository: not configured (NVIDIA packages are installed)"
+    else
+        echo "NVIDIA CUDA repository: not configured"
+    fi
     echo
 
     if [ -f /etc/pve/corosync.conf ] || { command -v pvecm >/dev/null 2>&1 && pvecm status >/dev/null 2>&1; }; then

@@ -68,6 +68,9 @@ case "$CODENAME" in
         ;;
 esac
 
+CUDA_REPO_URL="https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO}/x86_64"
+CUDA_LIST="/etc/apt/sources.list.d/cuda-${CUDA_REPO}-x86_64.list"
+
 echo "Detected Debian codename: $CODENAME (CUDA repository: $CUDA_REPO)"
 
 apt update
@@ -91,7 +94,7 @@ DEBIAN_FRONTEND=noninteractive apt-get -y \
 # failure leaves the current apt configuration intact.
 KEYRING_DEB="$(mktemp "${TMPDIR:-/tmp}/cuda-keyring.XXXXXX.deb")"
 curl -fsSL \
-    "https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO}/x86_64/cuda-keyring_1.1-1_all.deb" \
+    "${CUDA_REPO_URL}/cuda-keyring_1.1-1_all.deb" \
     -o "$KEYRING_DEB"
 
 # Remove repository files from a previous Debian release.  The cuda-keyring
@@ -102,6 +105,13 @@ rm -f /etc/apt/sources.list.d/cuda-debian*-x86_64.sources
 
 DEBIAN_FRONTEND=noninteractive dpkg -i "$KEYRING_DEB"
 rm -f "$KEYRING_DEB"
+
+# The repository file is a dpkg conffile.  If it was removed previously, dpkg
+# will keep it removed when the same keyring version is reinstalled.  Write it
+# explicitly so the CUDA repository is always available after this point.
+printf 'deb [signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg] %s/ /\n' \
+    "$CUDA_REPO_URL" > "$CUDA_LIST"
+chmod 644 "$CUDA_LIST"
 
 apt update
 DEBIAN_FRONTEND=noninteractive apt-get install -y nvidia-driver-cuda
