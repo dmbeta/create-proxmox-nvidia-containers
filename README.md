@@ -14,9 +14,9 @@ curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-co
 reboot now
 ```
 
-The script detects the Debian release, selects the matching CUDA repository (`debian12` or `debian13`), installs `proxmox-default-headers`, and builds `nvidia-driver-cuda` plus `nvidia-kernel-dkms`. Pass `--reboot` to the script if you want it to reboot automatically, for example with `curl ... | bash -s -- --reboot`. Verify the result with `nvidia-smi` after the reboot.
+The script detects the Debian release, selects the matching CUDA repository (`debian12` or `debian13`), installs `proxmox-default-headers`, and builds `nvidia-driver-cuda` plus `nvidia-kernel-dkms`. If the running kernel is an opt-in kernel, it also installs the headers for that exact kernel. Pass `--reboot` to the script if you want it to reboot automatically, for example with `curl ... | bash -s -- --reboot`. Verify the result with `nvidia-smi` after the reboot.
 
-> **Kernel headers:** `proxmox-default-headers` tracks the headers for the default Proxmox kernel. `pve-headers` still exists, but it is a transitional package that depends on `proxmox-default-headers`. If you boot an opt-in kernel or a non-default kernel series, install the headers for that exact kernel instead:
+> **Kernel headers:** `proxmox-default-headers` tracks the headers for the default Proxmox kernel. `pve-headers` still exists, but it is a transitional package that depends on `proxmox-default-headers`. The host installer checks for `/lib/modules/$(uname -r)/build` and installs `proxmox-headers-$(uname -r)` when needed, so opt-in kernels work without manual header handling. If the exact headers package is unavailable from your configured repositories, install it manually or boot the default kernel:
 >
 > ```bash
 > apt install proxmox-headers-$(uname -r)
@@ -147,7 +147,7 @@ reboot
 /root/upgrade_to_pve9.sh containers
 ```
 
-`host-nvidia` installs the `debian13` CUDA keyring, `proxmox-default-headers`, and the NVIDIA driver, then verifies the DKMS module for the running kernel. `containers` restarts the containers recorded during `prepare`, upgrades each running Debian 12 container to Debian 13, reinstalls the NVIDIA userspace driver when a GPU device is present, reboots the container, and verifies `nvidia-smi`.
+`host-nvidia` installs the `debian13` CUDA keyring, `proxmox-default-headers` plus any headers needed for an opt-in running kernel, and the NVIDIA driver, then verifies the DKMS module for the running kernel. `containers` restarts the containers recorded during `prepare`, upgrades each running Debian 12 container to Debian 13, reinstalls the NVIDIA userspace driver when a GPU device is present, reboots the container, and verifies `nvidia-smi`.
 
 Container rollback, if needed:
 
@@ -174,7 +174,7 @@ The script logs to `/var/log/pve9-upgrade-*.log` and stores its stage in `/var/l
 
 # Refresh the NVIDIA Driver on Host and Containers
 
-This is the routine driver refresh for an installation that is already on PVE 9 / Debian 13. It is **not** the PVE 8 -> 9 upgrade. The script assumes all running containers are using the GPU; stop containers that do not use it. It refreshes the Proxmox and NVIDIA packages on the host, upgrades packages in the running containers, restarts the containers, and then restarts the host.
+This is the routine driver refresh for an installation that is already on PVE 9 / Debian 13. It is **not** the PVE 8 -> 9 upgrade. The script assumes all running containers are using the GPU; stop containers that do not use it. It refreshes the Proxmox and NVIDIA packages on the host, including headers for the running opt-in kernel, upgrades packages in the running containers, restarts the containers, and then restarts the host.
 
 ```bash
 # please run this on the Proxmox host

@@ -112,9 +112,23 @@ chmod 644 "$CUDA_LIST"
 
 apt update
 
-# proxmox-default-headers tracks the headers for the current default Proxmox
-# kernel.  On an opt-in kernel, install proxmox-headers-"$(uname -r)" instead.
-apt install -y proxmox-default-headers
+# proxmox-default-headers tracks the default Proxmox kernel series.  If the
+# running kernel is an opt-in kernel, its exact headers are also required for
+# DKMS, even when the default headers package is installed.
+apt install -y proxmox-default-headers || \
+    echo "Warning: could not install proxmox-default-headers; continuing with running-kernel headers." >&2
+
+KERNEL="$(uname -r)"
+if [ ! -d "/lib/modules/${KERNEL}/build" ]; then
+    if ! apt-cache show "proxmox-headers-${KERNEL}" >/dev/null 2>&1; then
+        die "no headers package found for running kernel ${KERNEL}. Boot the default Proxmox kernel or install proxmox-headers-${KERNEL} manually."
+    fi
+    apt install -y "proxmox-headers-${KERNEL}"
+fi
+
+if [ ! -d "/lib/modules/${KERNEL}/build" ]; then
+    die "headers for running kernel ${KERNEL} are still missing after installing proxmox-headers-${KERNEL}."
+fi
 
 if dpkg -s nvidia-kernel-dkms >/dev/null 2>&1; then
     apt install -y --reinstall nvidia-driver-cuda nvidia-kernel-dkms
@@ -122,7 +136,6 @@ else
     apt install -y nvidia-driver-cuda nvidia-kernel-dkms
 fi
 
-KERNEL="$(uname -r)"
 if command -v dkms >/dev/null 2>&1; then
     if ! dkms status | grep -q "nvidia.*${KERNEL}.*installed"; then
         echo "Error: no NVIDIA DKMS module was built for the running kernel ${KERNEL}." >&2

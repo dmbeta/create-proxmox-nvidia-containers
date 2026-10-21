@@ -147,6 +147,24 @@ latest_installed_kernel() {
     done | sort -V | tail -n 1
 }
 
+ensure_running_kernel_headers() {
+    local kernel
+
+    kernel="$(uname -r)"
+    if [ -d "/lib/modules/${kernel}/build" ]; then
+        return 0
+    fi
+    if ! apt-cache show "proxmox-headers-${kernel}" >/dev/null 2>&1; then
+        warn "no proxmox-headers-${kernel} package is available"
+        return 1
+    fi
+    if ! apt install -y "proxmox-headers-${kernel}"; then
+        warn "could not install proxmox-headers-${kernel}"
+        return 1
+    fi
+    [ -d "/lib/modules/${kernel}/build" ]
+}
+
 backup_once() {
     local file="$1"
     [ -f "$file" ] || return 0
@@ -635,8 +653,10 @@ prepare() {
     echo "Updating PVE 8 packages before the release upgrade..."
     apt update
     # Keep headers for the default kernel present so DKMS can build for any
-    # kernel installed by this update.
+    # kernel installed by this update.  Opt-in kernels also need their exact
+    # running-kernel headers.
     apt install -y proxmox-default-headers || warn "could not install proxmox-default-headers yet"
+    ensure_running_kernel_headers || warn "could not ensure headers for the running kernel; DKMS builds may fail"
     apt dist-upgrade
 
     if [ -f /var/run/reboot-required ]; then

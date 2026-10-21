@@ -17,9 +17,25 @@ pveupgrade -y
 
 # Install headers for the current default Proxmox kernel.  pve-headers is a
 # transitional alias; proxmox-default-headers is the real metapackage.
-apt install proxmox-default-headers -y
+apt install proxmox-default-headers -y || \
+    echo "Warning: could not install proxmox-default-headers; continuing with running-kernel headers." >&2
 
-# Rebuild the NVIDIA modules against the new headers.
+# Opt-in kernels need headers for the exact running kernel as well.
+KERNEL="$(uname -r)"
+if [ ! -d "/lib/modules/${KERNEL}/build" ]; then
+    if ! apt install -y "proxmox-headers-${KERNEL}"; then
+        echo "Error: could not install headers for running kernel ${KERNEL}." >&2
+        echo "Install proxmox-headers-${KERNEL} manually or boot the default kernel." >&2
+        exit 1
+    fi
+fi
+
+if [ ! -d "/lib/modules/${KERNEL}/build" ]; then
+    echo "Error: headers for running kernel ${KERNEL} are still missing." >&2
+    exit 1
+fi
+
+# Rebuild the NVIDIA modules against the running kernel's headers.
 apt install --reinstall nvidia-driver-cuda nvidia-kernel-dkms -y
 
 # For each running container, upgrade packages and refresh the Docker Compose
