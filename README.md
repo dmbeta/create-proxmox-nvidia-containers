@@ -1,28 +1,32 @@
 # How to create Proxmox LXC containers with nvidia GPU permissions
 Scripts for creating Proxmox VE LXC containers with nvidia GPU permissions based on [jocke's guide to Plex GPU transcoding](https://jocke.no/2025/04/20/plex-gpu-transcoding-in-docker-on-lxc-on-proxmox-v2/).
 
-These were _absolutely_ vibe-coded (using Gemini) as my sed, awk, and grep skills are pretty rusty, but these scripts were tested on Proxmox VE 8.4.5 with Debian 12.11.
+These were _absolutely_ vibe-coded (using Gemini) as my sed, awk, and grep skills are pretty rusty. The scripts now target Proxmox VE 9 with Debian 13 (Trixie). The NVIDIA installers also detect Debian 12 (Bookworm), so they keep working on PVE 8 hosts and existing Bookworm containers.
 
 ## Proxmox setup prior to containers
 
-We need to update the `/etc/apt/sources.list` file to include non-free and non-free-firmware sources so that we can install the nvidia drivers.
+The NVIDIA packages come from NVIDIA's CUDA repository. The scripts also enable the `non-free` and `non-free-firmware` components so Debian's own NVIDIA-related packages and firmware remain available. Proxmox VE 9 uses the deb822 format (`/etc/apt/sources.list.d/debian.sources`), while older installations still use `/etc/apt/sources.list`; `update_debian_sources.sh` handles both and leaves Proxmox, Docker, and other third-party repositories alone.
+
+On the Proxmox host, run the host driver installer:
 
 ```bash
-curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/update_debian_sources.sh | bash
-apt update
-apt install proxmox-headers-$(uname -r)
-wget https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/cuda-keyring_1.1-1_all.deb
-dpkg -i cuda-keyring_1.1-1_all.deb
-apt update
-apt install nvidia-driver-cuda nvidia-kernel-dkms
+curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_nvidia_driver_on_host.sh | bash
 reboot now
 ```
+
+The script detects the Debian release, selects the matching CUDA repository (`debian12` or `debian13`), installs `proxmox-default-headers`, and builds `nvidia-driver-cuda` plus `nvidia-kernel-dkms`. Pass `--reboot` to the script if you want it to reboot automatically, for example with `curl ... | bash -s -- --reboot`. Verify the result with `nvidia-smi` after the reboot.
+
+> **Kernel headers:** `proxmox-default-headers` tracks the headers for the default Proxmox kernel. `pve-headers` still exists, but it is a transitional package that depends on `proxmox-default-headers`. If you boot an opt-in kernel or a non-default kernel series, install the headers for that exact kernel instead:
+>
+> ```bash
+> apt install proxmox-headers-$(uname -r)
+> ```
 
 ## Creating the container
 1. Create a new LXC container with the following options:
     - Container type: Container
     - OS: Debian
-    - Version: 12 (Bookworm)
+    - Version: 13 (Trixie)
 
     But do not start it just yet.
 
@@ -33,7 +37,7 @@ reboot now
     curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/generate_lxc_conf_additions.sh | bash
     ```
 
-    and then copy the output to the container's configuration file, usually located at /etc/lxc/<container_id>.conf.
+    and then copy the output to the container's configuration file, usually located at /etc/pve/lxc/<container_id>.conf.
 
     NOTE: All following commands can be run from the container, or pushed to the container by running on the host with the command copied inside like so:
 
@@ -41,15 +45,7 @@ reboot now
     pct exec <container_id> -- sh -c "<command>"
     ```
 
-3. Start the container and then run the following command inside to install the NVIDIA driver on the container.
-
-    First install sudo and curl if they are not already installed.
-
-    ```bash
-    apt update && apt upgrade -y && apt-get install -y sudo curl
-    ```
-
-    Then install the NVIDIA driver:
+3. Start the container and then run the following command inside to install the NVIDIA driver on the container. The script installs `sudo` and `curl` if needed, detects Debian 12 or 13, selects the matching CUDA repository, and reboots the container when it finishes.
 
     ```bash
     curl -fsSL -o- https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/install_nvidia_driver_on_container.sh | bash
@@ -106,9 +102,79 @@ reboot now
     ![full clone](images/full_clone.png)
 
 
-# Upgrade NVIDIA Driver on Host and Containers
+# Upgrade an Existing PVE 8 / Debian 12 Installation to PVE 9 / Debian 13
 
-This script assumes all running containers are using the GPU. If you have containers that are not using the GPU, I'd recommend stopping them before running this script. This script will upgrade the NVIDIA driver on the host, the containers, restart the containers, and then restart the host.
+`upgrade_to_pve9.sh` is a staged helper for the major distribution upgrade. It is **not** a replacement for the official [Upgrade from 8 to 9](https://pve.proxmox.com/wiki/Upgrade_from_8_to_9) guide or for tested backups. Read the official guide before starting.
+
+The script:
+
+- updates the host to the latest PVE 8.4 packages and runs `pve8to9 --full`;
+- switches the Debian and Proxmox repositories to Trixie, and the NVIDIA CUDA repository to `debian13`;
+- stops running containers during `prepare`, then upgrades the Debian 12 containers it restarts and creates a snapshot before each one;
+- never reboots automatically;
+- refuses Ceph nodes and unhealthy clusters, and requires explicit flags or confirmation for cluster nodes and running VMs.
+
+Requirements:
+
+- PVE 8.4.x, root access, and a working console/IPMI (or `tmux`/`screen`). Do **not** run the upgrade from the Proxmox GUI virtual console.
+- Tested backups of every VM and container. The script asks you to confirm this.
+- At least 10 GB free on `/`, ideally more.
+- In a cluster, upgrade one node at a time and pass `--allow-cluster`. Make sure the cluster is quorate and healthy first.
+- Ceph nodes are not supported by this script. Upgrade Ceph separately with the official Ceph guide.
+
+Download the script to the host and run the read-only check:
+
+```bash
+curl -fsSL -o /root/upgrade_to_pve9.sh https://raw.githubusercontent.com/dmbeta/create-proxmox-nvidia-containers/main/upgrade_to_pve9.sh
+chmod +x /root/upgrade_to_pve9.sh
+/root/upgrade_to_pve9.sh check
+```
+
+Then start the host upgrade:
+
+```bash
+/root/upgrade_to_pve9.sh prepare --backups-confirmed
+```
+
+`prepare` stops all running containers, records their IDs, updates PVE 8, and runs the `pve8to9` checker. If it installs a new kernel or requests a reboot, reboot the host and run the same `prepare` command again. Once the PVE 8 side is ready, it switches the apt repositories and runs `apt dist-upgrade` to PVE 9.
+
+After `prepare` completes, reboot and finish the NVIDIA installation:
+
+```bash
+reboot
+/root/upgrade_to_pve9.sh host-nvidia
+reboot
+/root/upgrade_to_pve9.sh containers
+```
+
+`host-nvidia` installs the `debian13` CUDA keyring, `proxmox-default-headers`, and the NVIDIA driver, then verifies the DKMS module for the running kernel. `containers` restarts the containers recorded during `prepare`, upgrades each running Debian 12 container to Debian 13, reinstalls the NVIDIA userspace driver when a GPU device is present, reboots the container, and verifies `nvidia-smi`.
+
+Container rollback, if needed:
+
+```bash
+pct stop <container_id>   # if it is still running
+pct rollback <container_id> pre-debian13-<timestamp>-<container_id>
+pct start <container_id>
+```
+
+Snapshots are kept until you remove them with `pct delsnapshot <container_id> <snapshot>`. If your storage does not support container snapshots, use `--no-snapshot` only when you have a separate tested backup.
+
+Useful options:
+
+| Option | Purpose |
+| --- | --- |
+| `--repo enterprise` or `--repo no-subscription` | Override Proxmox repository detection. |
+| `--allow-cluster` | Allow a quorate cluster node. |
+| `--allow-running-vms` | Continue with running VMs (not recommended). |
+| `--force-low-space` | Continue with less than 10 GB free. |
+| `--accept-unknown-repos` | Continue after reviewing third-party repositories that still point at Bookworm. |
+| `--no-snapshot` | Do not create container snapshots. |
+
+The script logs to `/var/log/pve9-upgrade-*.log` and stores its stage in `/var/lib/pve-nvidia-upgrade/state`. Containers that were already stopped before `prepare` are skipped by the container stage; start and upgrade them manually afterwards.
+
+# Refresh the NVIDIA Driver on Host and Containers
+
+This is the routine driver refresh for an installation that is already on PVE 9 / Debian 13. It is **not** the PVE 8 -> 9 upgrade. The script assumes all running containers are using the GPU; stop containers that do not use it. It refreshes the Proxmox and NVIDIA packages on the host, upgrades packages in the running containers, restarts the containers, and then restarts the host.
 
 ```bash
 # please run this on the Proxmox host
